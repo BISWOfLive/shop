@@ -21,6 +21,9 @@ public class ProductSaveRequest {
     @Size(max = 120, message = "商品名称不能超过 120 个字符")
     private String name;
 
+    @Size(max = 200, message = "商品短卖点不能超过 200 个字符")
+    private String subtitle = "";
+
     @NotNull(message = "请选择商品分类")
     @Positive(message = "分类 ID 必须为正整数")
     private Long categoryId;

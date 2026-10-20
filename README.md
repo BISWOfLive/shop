@@ -4,6 +4,10 @@
 
 数据库使用全新 test_shop 基线，完整建库脚本定义 13 张表。所有表仅有逻辑关联，不创建物理外键；当前业务代码已实现商品模块，其余模块按实践顺序接入。
 
+## 全项目执行文档
+
+按九个实践阶段开发时，从 [test_shop 全项目执行总册](docs/superpowers/plans/2026-10-20-test-shop-execution.md) 开始。总册关联完整表结构，并链接九份阶段清单，逐项说明字段映射、接口、SQL、事务、并发、缓存、消息、权限、部署与通知服务拆分；清单描述后续实施，不表示功能已完成。
+
 ## 目录
 
 - src/main/java/com/chengli/shop/controller：商品、分类接口。
@@ -11,6 +15,8 @@
 - src/main/java/com/chengli/shop/mapper：继承 MyBatis-Plus BaseMapper 的数据访问接口。
 - src/main/java/com/chengli/shop/config：分页拦截器与时间字段自动填充。
 - src/main/java/com/chengli/shop/entity、dto、vo：数据库实体、请求参数、响应对象。
+- src/main/java/com/chengli/shop/enums：商品、订单、库存、账号和消息的状态编码。
+- docs/design/java-data-classes.md：13 张表的实体映射及 DTO、VO、枚举说明。
 - src/main/java/com/chengli/shop/common、exception：统一响应、分页、异常处理。
 - src/main/resources/sql/test_shop.sql：test_shop 全量建库脚本，包含 13 张表及分类、角色字典。
 - docs/design/test-shop-data-model.md：当前完整模型、字段说明与逻辑关系图。
@@ -81,7 +87,7 @@ product 保存标题、短卖点、分类、当前售价、主图、描述与上
 
 所有关联只保留 ID 和必要索引，由服务层校验关联存在及归属；数据库保留主键、唯一键与 CHECK。商品当前售价使用 DECIMAL(12,2)，Java 使用 BigDecimal；订单金额使用 DECIMAL(18,2)。商品默认下架，上架必须有主图。
 
-当前商品接口支持基础字段与单张主图；subtitle 和完整图片集合的编辑、库存订单、权限及消息接口仍按实践顺序开发。建表不代表这些功能已实现，也不会自动生成可登录账号。
+当前商品接口支持基础字段、subtitle 短卖点和单张主图；完整图片集合的编辑、库存订单、权限及消息接口仍按实践顺序开发。相关实体、DTO、VO 和状态枚举见 [Java 数据类](docs/design/java-data-classes.md)。建表不代表这些功能已实现，也不会自动生成可登录账号。
 
 ## 接口
 

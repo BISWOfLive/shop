@@ -18,6 +18,9 @@ public class Product {
     private Long id;
     private String name;
 
+    /** 可选短卖点，对应 subtitle。 */
+    private String subtitle;
+
     @TableField("category_id")
     private Long categoryId;
     private BigDecimal price;

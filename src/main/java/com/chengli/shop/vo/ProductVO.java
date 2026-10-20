@@ -9,6 +9,7 @@ import java.time.LocalDateTime;
 public class ProductVO {
     private Long id;
     private String name;
+    private String subtitle;
     private Long categoryId;
     private String categoryName;
     private BigDecimal price;

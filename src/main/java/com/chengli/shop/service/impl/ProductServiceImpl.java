@@ -128,6 +128,7 @@ public class ProductServiceImpl implements ProductService {
     private Product toEntity(ProductSaveRequest request) {
         Product product = new Product();
         product.setName(request.getName().strip());
+        product.setSubtitle(request.getSubtitle() == null ? "" : request.getSubtitle().strip());
         product.setCategoryId(request.getCategoryId());
         product.setPrice(request.getPrice());
         product.setDescription(request.getDescription() == null ? "" : request.getDescription().strip());
@@ -140,6 +141,7 @@ public class ProductServiceImpl implements ProductService {
         ProductVO vo = new ProductVO();
         vo.setId(product.getId());
         vo.setName(product.getName());
+        vo.setSubtitle(product.getSubtitle());
         vo.setCategoryId(product.getCategoryId());
         vo.setCategoryName(categoryName);
         vo.setPrice(product.getPrice());
