@@ -72,6 +72,8 @@ class MybatisPlusMigrationTests {
         ProductVO created = productService.create(request);
 
         assertNotNull(created.getId());
+        assertEquals(0, jdbc.queryForObject("SELECT available_qty FROM inventory WHERE product_id = ?",
+                Integer.class, created.getId()));
         assertTrue(created.getId() > 0);
         assertEquals(categoryId, created.getCategoryId());
         assertNotNull(created.getCategoryName());

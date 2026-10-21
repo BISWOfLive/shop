@@ -18,6 +18,6 @@ public class OrderCreateRequest {
     private String idempotencyKey;
 
     @NotEmpty(message = "订单至少需要一件商品")
-    @Valid
-    private List<@NotNull OrderItemCreateRequest> items;
+    @Size(max = 100, message = "订单原始商品项不能超过 100 条")
+    private List<@NotNull @Valid OrderItemCreateRequest> items;
 }

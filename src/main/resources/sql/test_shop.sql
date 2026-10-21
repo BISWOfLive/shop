@@ -36,6 +36,10 @@ CREATE TABLE product (
     PRIMARY KEY (id),
     KEY idx_product_category_status_price (category_id, status, price ASC, id DESC),
     KEY idx_product_status_created (status, created_at DESC, id DESC),
+    -- 全站低价查询不限定分类，使用status等值前缀后按price/id有序读取。
+    KEY idx_product_status_price (status, price ASC, id DESC),
+    -- 分类最近新增：先限定分类和状态，再按创建时间与ID降序读取。
+    KEY idx_product_category_status_created (category_id, status, created_at DESC, id DESC),
     CONSTRAINT chk_product_price CHECK (price > 0),
     CONSTRAINT chk_product_status CHECK (status IN (0,1)),
     CONSTRAINT chk_product_publish_image CHECK (status = 0 OR CHAR_LENGTH(TRIM(image_url)) > 0)

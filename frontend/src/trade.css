@@ -1,0 +1,53 @@
+.trade-page { font-size: 16px; }
+.trade-nav-button { border: 0; background: transparent; width: 100%; text-align: left; color: inherit; }
+.shop-masthead button.shop-manage-link { background: #fff; cursor: pointer; }
+.trade-page input, .trade-page select, .purchase-dialog input { min-height: 42px; padding: 8px 12px; border: 1px solid #c9d0ce; border-radius: 6px; background: #fff; color: #24312f; min-width: 0; width: 100%; font-size: 16px; }
+.trade-filters { display: flex; flex-wrap: wrap; gap: 18px; align-items: end; margin-bottom: 24px; }
+.trade-filters label { display: grid; gap: 6px; flex: 1 1 160px; max-width: 360px; }
+.trade-filters .button { flex-shrink: 0; }
+.trade-panel { padding: 24px; background: #fff; border-radius: 10px; margin-block: 24px; }
+.trade-heading { display: flex; justify-content: space-between; align-items: center; gap: 20px; margin-bottom: 24px; flex-wrap: wrap; }
+.trade-heading h2 { font-size: 22px; }
+.trade-section { margin-top: 36px; }
+.trade-line { display: flex; gap: 20px; align-items: center; padding-block: 20px; }
+.trade-line + .trade-line { border-top: 1px solid #e7ece9; }
+.trade-line img { width: 88px; height: 88px; object-fit: contain; background: #f5f7f8; }
+.trade-line-name { display: grid; gap: 8px; flex: 1; min-width: 0; overflow-wrap: anywhere; }
+.trade-line label { display: grid; gap: 6px; width: 110px; flex-shrink: 0; }
+.trade-actions { display: flex; justify-content: flex-end; flex-wrap: wrap; gap: 12px; margin-block: 20px; }
+.trade-error { color: #a51d17; padding: 16px; background: #fff0ee; margin-block: 16px; font-size: 16px; overflow-wrap: anywhere; }
+.trade-empty { padding: 36px 0; }
+.trade-total { display: flex; justify-content: flex-end; gap: 24px; align-items: center; margin-top: 24px; }
+.trade-total strong { font-size: 28px; color: #c91d14; font-variant-numeric: tabular-nums; }
+.trade-facts { display: flex; flex-wrap: wrap; gap: 18px 32px; margin: 0 0 24px; }
+.trade-facts div { display: grid; gap: 4px; }
+.trade-facts dt { color: #56625e; }
+.trade-facts dd { margin: 0; font-variant-numeric: tabular-nums; }
+.trade-order-no { overflow-wrap: anywhere; }
+.trade-order-row { display: grid; grid-template-columns: minmax(0, 1fr) auto auto auto; align-items: center; gap: 24px; padding-block: 24px; }
+.trade-order-row + .trade-order-row { border-top: 1px solid #e7ece9; }
+.trade-order-row > div { display: grid; gap: 8px; }
+.trade-order-row:hover { color: #c91d14; }
+.trade-pagination { display: flex; align-items: center; flex-wrap: wrap; justify-content: flex-end; gap: 14px; margin-top: 24px; }
+.trade-table-wrap { overflow: auto; background: #fff; }
+.trade-table { border-collapse: collapse; width: 100%; min-width: 720px; }
+.trade-table th, .trade-table td { padding: 16px; text-align: left; font-size: 16px; }
+.trade-table td { border-top: 1px solid #e7ece9; overflow-wrap: anywhere; max-width: 320px; }
+.purchase-dialog { width: min(850px, calc(100vw - 32px)); max-height: 85dvh; padding: 28px; border: 0; border-radius: 12px; color: #24312f; font-size: 16px; }
+.purchase-dialog::backdrop { background: rgb(0 0 0 / 40%); }
+.shop-purchase-controls { display: flex; flex-wrap: wrap; gap: 12px; align-items: end; margin-block: 24px; }
+.shop-purchase-controls label { display: grid; gap: 8px; font-size: 16px; }
+.shop-purchase-controls input { width: 100px; padding: 10px; border: 1px solid #c9d0ce; border-radius: 6px; font-size: 16px; }
+@media (max-width: 700px) {
+  .workspace .sidebar { flex-direction: column; align-items: stretch; gap: 16px; }
+  .workspace .sidebar nav { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 4px; }
+  .workspace .sidebar .nav-item { justify-content: center; padding: 10px 4px; white-space: nowrap; }
+  .trade-panel { padding: 18px; }
+  .trade-line { flex-wrap: wrap; gap: 16px; }
+  .trade-line img { width: 64px; height: 64px; }
+  .trade-line-name { flex-basis: calc(100% - 80px); }
+  .trade-order-row { grid-template-columns: 1fr auto; gap: 14px; }
+  .trade-order-row > div { grid-column: 1 / -1; }
+  .trade-heading { align-items: flex-start; }
+  .purchase-dialog { padding: 20px; }
+}

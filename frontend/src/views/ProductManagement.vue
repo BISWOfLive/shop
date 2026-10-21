@@ -138,9 +138,7 @@ onBeforeUnmount(() => {
   <section class="product-page">
     <div class="page-heading">
       <div>
-        <p class="eyebrow">商品中心 / PRODUCTS</p>
         <h1>商品管理</h1>
-        <p class="page-description">管理每一件好商品，让商品信息井然有序。</p>
       </div>
       <button class="button primary" type="button" :disabled="!categories.length || categoryLoading"
               @click="openEditor()"><AppIcon name="plus" />新增商品</button>
@@ -225,8 +223,7 @@ onBeforeUnmount(() => {
               <td colspan="6">
                 <div class="list-state">
                   <span class="state-icon"><AppIcon name="box" /></span>
-                  <h3>{{ hasFilters ? '没有找到符合条件的商品' : '从第一件商品开始' }}</h3>
-                  <p>{{ hasFilters ? '尝试调整商品名称、分类或状态。' : '添加商品名称、价格和分类，开始整理你的商品库。' }}</p>
+                  <h3>{{ hasFilters ? '没有找到符合条件的商品' : '暂无商品' }}</h3>
                   <button v-if="hasFilters" class="button secondary" type="button" @click="resetFilters">清除筛选</button>
                   <button v-else class="button primary" type="button" :disabled="!categories.length"
                           @click="openEditor()"><AppIcon name="plus" />新增商品</button>
@@ -244,7 +241,7 @@ onBeforeUnmount(() => {
                   </div>
                   <div class="product-copy">
                     <strong :title="product.name">{{ product.name }}</strong>
-                    <small>ID {{ String(product.id).padStart(6, '0') }}</small>
+                    <span class="product-id">ID {{ String(product.id).padStart(6, '0') }}</span>
                   </div>
                 </div>
               </td>
@@ -289,7 +286,6 @@ onBeforeUnmount(() => {
         </div>
       </footer>
     </div>
-    <p class="page-footnote">每一份好生意，都从认真管理商品开始。</p>
     <ProductEditor ref="editor" :categories="categories" @saved="onSaved" />
   </section>
 </template>

@@ -49,17 +49,17 @@ public class GlobalExceptionHandler {
             HandlerMethodValidationException.class
     })
     public ResponseEntity<ApiResponse<Void>> invalidRequest(Exception exception) {
-        return response(HttpStatus.BAD_REQUEST, "请求参数格式不正确，请核对商品字段");
+        return response(HttpStatus.BAD_REQUEST, "请求参数格式不正确");
     }
 
     @ExceptionHandler(DataIntegrityViolationException.class)
     public ResponseEntity<ApiResponse<Void>> dataIntegrity(DataIntegrityViolationException exception) {
-        return response(HttpStatus.CONFLICT, "数据不满足数据库约束，请核对分类、价格和商品状态");
+        return response(HttpStatus.CONFLICT, "数据不满足数据库约束");
     }
 
     @ExceptionHandler(Exception.class)
     public ResponseEntity<ApiResponse<Void>> unexpected(Exception exception) {
-        log.error("处理商品模块请求失败", exception);
+        log.error("处理业务请求失败", exception);
         return response(HttpStatus.INTERNAL_SERVER_ERROR, "服务暂时不可用，请稍后重试");
     }
 

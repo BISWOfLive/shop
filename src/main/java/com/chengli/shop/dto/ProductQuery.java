@@ -30,4 +30,8 @@ public class ProductQuery extends PageQuery {
     @NotNull
     @Pattern(regexp = "asc|desc", message = "排序方向只能为 asc 或 desc")
     private String sortOrder = "desc";
+
+    /** 首页少量推荐无需统计总数；管理端和普通分页默认保留精确总数。 */
+    @NotNull
+    private Boolean includeTotal = true;
 }

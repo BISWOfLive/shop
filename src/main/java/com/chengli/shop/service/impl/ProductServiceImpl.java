@@ -29,14 +29,16 @@ public class ProductServiceImpl implements ProductService {
 
     private final ProductMapper productMapper;
     private final CategoryMapper categoryMapper;
+    private final com.chengli.shop.mapper.InventoryMapper inventoryMapper;
 
     @Override
     @Transactional(readOnly = true)
     public PageResult<ProductVO> page(ProductQuery query) {
-        Page<Product> page = new Page<>(query.getPage(), query.getSize());
+        Page<Product> page = new Page<>(query.getPage(), query.getSize(), query.getIncludeTotal());
         productMapper.selectPage(page, buildQuery(query));
         List<ProductVO> records = toProductVOs(page.getRecords());
-        return new PageResult<>(records, page.getTotal(), query.getPage(), query.getSize());
+        return new PageResult<>(records, query.getIncludeTotal() ? page.getTotal() : -1L,
+                query.getPage(), query.getSize());
     }
 
     @Override
@@ -53,6 +55,9 @@ public class ProductServiceImpl implements ProductService {
         Category category = requireCategory(request.getCategoryId());
         Product product = toEntity(request);
         productMapper.insert(product);
+        com.chengli.shop.entity.Inventory inventory = new com.chengli.shop.entity.Inventory();
+        inventory.setProductId(product.getId());
+        inventoryMapper.insert(inventory);
         // 读取数据库实际保存的时间精度，再组装响应。
         return toVO(requireProduct(product.getId()), category.getName());
     }

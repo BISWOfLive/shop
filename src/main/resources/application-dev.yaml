@@ -1,0 +1,4 @@
+# 显式启用 dev 后，通过环境变量指定已手工准备的占位买家；没有默认账号。
+shop:
+  dev:
+    buyer-id: ${SHOP_DEV_BUYER_ID:}

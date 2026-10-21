@@ -83,9 +83,7 @@ defineExpose({ open })
     <form @submit.prevent="submit">
       <div class="dialog-header">
         <div>
-          <p class="eyebrow">商品信息</p>
           <h2 id="editor-title">{{ title }}</h2>
-          <p class="muted">填写商品的基本信息，带 * 的项目为必填项。</p>
         </div>
         <button class="icon-button" type="button" aria-label="关闭表单" :disabled="saving" @click="close">
           <AppIcon name="close" />
@@ -122,13 +120,12 @@ defineExpose({ open })
           </select>
         </label>
         <label class="field">
-          <span>主图地址 <b v-if="form.status === 1">*</b><small>{{ form.status === 1 ? '上架必填' : '下架时可暂不填' }}</small></span>
+          <span>主图地址 <b v-if="form.status === 1">*</b></span>
           <input v-model="form.imageUrl" name="imageUrl" type="url" maxlength="512"
                  :required="form.status === 1" placeholder="https://example.com/product.jpg" />
-          <small>使用以 http:// 或 https:// 开头的稳定图片地址；可先下架保存，补齐主图后再上架。</small>
         </label>
         <label class="field">
-          <span class="label-row">商品描述 <small>{{ form.description.length }}/2000</small></span>
+          <span>商品描述</span>
           <textarea v-model="form.description" name="description" rows="4" maxlength="2000"
                     placeholder="介绍商品的材质、规格或使用方式……"></textarea>
         </label>

@@ -3,8 +3,12 @@ package com.chengli.shop.controller;
 import com.chengli.shop.common.ApiResponse;
 import com.chengli.shop.common.PageResult;
 import com.chengli.shop.dto.ProductQuery;
+import com.chengli.shop.dto.CursorProductQuery;
 import com.chengli.shop.dto.ProductSaveRequest;
 import com.chengli.shop.service.ProductService;
+import com.chengli.shop.service.ProductFeedService;
+import com.chengli.shop.vo.CursorPage;
+import com.chengli.shop.vo.ProductCardVO;
 import com.chengli.shop.vo.ProductVO;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.Positive;
@@ -28,10 +32,16 @@ import org.springframework.web.bind.annotation.RestController;
 public class ProductController {
 
     private final ProductService productService;
+    private final ProductFeedService productFeedService;
 
     @GetMapping
     public ApiResponse<PageResult<ProductVO>> page(@Valid @ModelAttribute ProductQuery query) {
         return ApiResponse.success(productService.page(query));
+    }
+
+    @GetMapping("/feed")
+    public ApiResponse<CursorPage<ProductCardVO>> feed(@Valid @ModelAttribute CursorProductQuery query) {
+        return ApiResponse.success(productFeedService.feed(query));
     }
 
     @GetMapping("/{id}")

@@ -1,13 +1,11 @@
 package com.chengli.shop.vo;
-
 import lombok.Data;
-import java.time.LocalDateTime;
-
+import java.time.OffsetDateTime;
 @Data
 public class InventoryVO {
-    private Long productId;
+    private String productId;
     private String productName;
     private String imageUrl;
     private Integer availableQty;
-    private LocalDateTime updatedAt;
+    private OffsetDateTime updatedAt;
 }
