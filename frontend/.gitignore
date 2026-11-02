@@ -1,0 +1,16 @@
+node_modules/
+dist/
+.npm-cache/
+.env
+.env.*
+!.env.example
+*.local
+tests/
+test/
+e2e/
+**/*.test.*
+**/*.spec.*
+coverage/
+test-results/
+playwright-report/
+*.log

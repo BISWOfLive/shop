@@ -1,0 +1,74 @@
+package com.chengli.shop.controller;
+
+import com.chengli.shop.common.ApiResponse;
+import com.chengli.shop.common.PageResult;
+import com.chengli.shop.dto.ProductQuery;
+import com.chengli.shop.dto.CursorProductQuery;
+import com.chengli.shop.dto.ProductSaveRequest;
+import com.chengli.shop.service.ProductService;
+import com.chengli.shop.service.ProductDetailQueryService;
+import com.chengli.shop.service.ProductFeedService;
+import com.chengli.shop.vo.CursorPage;
+import com.chengli.shop.vo.ProductCardVO;
+import com.chengli.shop.vo.ProductVO;
+import com.chengli.shop.vo.ProductDetailVO;
+import jakarta.validation.Valid;
+import jakarta.validation.constraints.Positive;
+import lombok.RequiredArgsConstructor;
+import org.springframework.http.HttpStatus;
+import org.springframework.http.CacheControl;
+import org.springframework.http.ResponseEntity;
+import org.springframework.validation.annotation.Validated;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.ModelAttribute;
+import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.PutMapping;
+import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RestController;
+
+@Validated
+@RestController
+@RequestMapping("/api/products")
+@RequiredArgsConstructor
+public class ProductController {
+
+    private final ProductService productService;
+    private final ProductFeedService productFeedService;
+    private final ProductDetailQueryService productDetailQueryService;
+
+    @GetMapping
+    public ApiResponse<PageResult<ProductVO>> page(@Valid @ModelAttribute ProductQuery query) {
+        return ApiResponse.success(productService.pagePublic(query));
+    }
+
+    @GetMapping("/feed")
+    public ApiResponse<CursorPage<ProductCardVO>> feed(@Valid @ModelAttribute CursorProductQuery query) {
+        return ApiResponse.success(productFeedService.feed(query));
+    }
+
+    @GetMapping("/{id}")
+    public ApiResponse<ProductDetailVO> detail(@PathVariable("id") @Positive(message = "商品 ID 必须为正整数") Long id) {
+        return ApiResponse.success(productDetailQueryService.getDetail(id));
+    }
+
+    @GetMapping("/{id}/edit")
+    public ResponseEntity<ApiResponse<ProductDetailVO>> edit(
+            @PathVariable("id") @Positive(message = "商品 ID 必须为正整数") Long id) {
+        return ResponseEntity.ok().cacheControl(CacheControl.noStore())
+                .body(ApiResponse.success(productService.getDetail(id)));
+    }
+
+    @PostMapping
+    public ResponseEntity<ApiResponse<ProductDetailVO>> create(@Valid @RequestBody ProductSaveRequest request) {
+        return ResponseEntity.status(HttpStatus.CREATED).body(ApiResponse.success(productService.create(request)));
+    }
+
+    @PutMapping("/{id}")
+    public ApiResponse<ProductDetailVO> update(
+            @PathVariable("id") @Positive(message = "商品 ID 必须为正整数") Long id,
+            @Valid @RequestBody ProductSaveRequest request) {
+        return ApiResponse.success(productService.update(id, request));
+    }
+}

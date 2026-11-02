@@ -1,0 +1,10 @@
+# dev 仅用于本地开发前端与日志体验，不提供开发买家、匿名交易身份或默认权限。
+# 本地开发必须在启动前注入数据库连接；仓库不再保存任何数据库默认口令：
+#   SHOP_DB_URL / SHOP_DB_USERNAME / SHOP_DB_PASSWORD
+# 可选组件默认关闭：SHOP_PRODUCT_CACHE_ENABLED=false、SHOP_ORDER_TIMEOUT_ENABLED=false。
+# dev 的本地 HTTP 不强制 Secure Cookie；prod 由 application-prod.yaml 固定 Secure，必须经 HTTPS 访问。
+server:
+  servlet:
+    session:
+      cookie:
+        secure: false

@@ -1,0 +1,62 @@
+# 通知服务生产基线：只连 test_shop_notification，接口只在内部网络暴露。
+# 数据库口令、Rabbit 凭据与验签公钥全部由运行环境注入，不写入镜像或仓库。
+server:
+  port: 8082
+  shutdown: graceful
+  servlet:
+    session:
+      # 本服务不使用浏览器 Session；显式关闭，避免误引入 Cookie 身份。
+      cookie:
+        secure: true
+
+spring:
+  lifecycle:
+    timeout-per-shutdown-phase: 30s
+  sql:
+    init:
+      mode: never
+  datasource:
+    hikari:
+      maximum-pool-size: 5
+      minimum-idle: 1
+      connection-timeout: 3000
+
+notification:
+  consumer:
+    enabled: ${NOTIFICATION_CONSUMER_ENABLED:false}
+    rabbit:
+      host: ${NOTIFICATION_RABBITMQ_HOST:}
+      port: ${NOTIFICATION_RABBITMQ_PORT:5672}
+      virtual-host: ${NOTIFICATION_RABBITMQ_VIRTUAL_HOST:}
+      username: ${NOTIFICATION_RABBITMQ_USERNAME:}
+      password: ${NOTIFICATION_RABBITMQ_PASSWORD:}
+
+management:
+  server:
+    port: 8083
+  endpoints:
+    web:
+      exposure:
+        include: health,info,prometheus
+  endpoint:
+    health:
+      show-details: never
+      probes:
+        enabled: true
+      group:
+        liveness:
+          include: livenessState
+        readiness:
+          include: readinessState,db
+  metrics:
+    tags:
+      application: shop-notification
+
+logging:
+  file:
+    name: ${NOTIFICATION_LOG_FILE:/app/logs/notification.log}
+
+info:
+  app:
+    name: shop-notification
+    version: ${NOTIFICATION_APP_VERSION:unknown}

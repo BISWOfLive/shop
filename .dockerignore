@@ -1,0 +1,33 @@
+# 版本控制、IDE 与本地状态
+.git
+.gitignore
+.idea
+*.iml
+*.log
+
+# 本地构建产物
+target
+**/target
+**/src/test
+
+# 前端、文档、生成数据与脚本不进入后端镜像
+frontend
+docs
+data
+scripts
+deploy
+README.md
+compose.yaml
+
+# 环境文件、证书、备份与密钥不进入镜像
+**/.env
+**/.env.*
+!**/.env.example
+**/secrets
+**/backups
+**/certs
+**/*.pem
+**/*.key
+**/*.p12
+**/*.jks
+**/*.p8

@@ -1,0 +1,99 @@
+server:
+  servlet:
+    session:
+      # 单实例容器 Session；prod 在 application-prod.yaml 强制 Secure 并只经 HTTPS 访问。
+      timeout: 30m
+      cookie:
+        name: SHOPSESSION
+        path: /
+        http-only: true
+        same-site: lax
+        secure: ${SHOP_SESSION_COOKIE_SECURE:false}
+
+spring:
+  application:
+    name: shop
+
+  # Rabbit 连接、声明与监听仅由显式功能开关 + dev/prod 的专用配置装配；关闭时不连接 MQ。
+  autoconfigure:
+    exclude:
+      - org.springframework.boot.amqp.autoconfigure.RabbitAutoConfiguration
+
+  sql:
+    init:
+      mode: never
+
+  data:
+    redis:
+      host: ${SHOP_REDIS_HOST:127.0.0.1}
+      port: ${SHOP_REDIS_PORT:6379}
+      username: ${SHOP_REDIS_USERNAME:}
+      password: ${SHOP_REDIS_PASSWORD:}
+      database: ${SHOP_REDIS_DATABASE:0}
+      connect-timeout: ${SHOP_REDIS_CONNECT_TIMEOUT:500ms}
+      timeout: ${SHOP_REDIS_TIMEOUT:500ms}
+
+  datasource:
+    hikari:
+      connection-init-sql: "SET time_zone = '+08:00'"
+    driver-class-name: com.mysql.cj.jdbc.Driver
+    # 数据库地址与口令不再提交到配置或回退到样例值；dev/prod 均由运行环境注入。
+    # 缺少任一变量时启动会指出对应键名；prod 另由 ProductionConfigurationGuard 校验。
+    url: ${SHOP_DB_URL}
+    username: ${SHOP_DB_USERNAME}
+    password: ${SHOP_DB_PASSWORD}
+
+shop:
+  order-timeout:
+    enabled: ${SHOP_ORDER_TIMEOUT_ENABLED:false}
+    publish-poll-millis: ${SHOP_ORDER_TIMEOUT_PUBLISH_POLL_MILLIS:1000}
+    scan-poll-millis: ${SHOP_ORDER_TIMEOUT_SCAN_POLL_MILLIS:30000}
+    lease-seconds: ${SHOP_ORDER_TIMEOUT_LEASE_SECONDS:30}
+    confirm-timeout-millis: ${SHOP_ORDER_TIMEOUT_CONFIRM_TIMEOUT_MILLIS:5000}
+    concurrency: ${SHOP_ORDER_TIMEOUT_CONCURRENCY:2}
+    prefetch: ${SHOP_ORDER_TIMEOUT_PREFETCH:10}
+    rabbit:
+      host: ${SHOP_RABBITMQ_HOST:127.0.0.1}
+      port: ${SHOP_RABBITMQ_PORT:5672}
+      virtual-host: ${SHOP_RABBITMQ_VIRTUAL_HOST:/}
+      username: ${SHOP_RABBITMQ_USERNAME:}
+      password: ${SHOP_RABBITMQ_PASSWORD:}
+      connection-timeout-millis: ${SHOP_RABBITMQ_CONNECTION_TIMEOUT_MILLIS:5000}
+  product-cache:
+    enabled: ${SHOP_PRODUCT_CACHE_ENABLED:false}
+    namespace: ${SHOP_PRODUCT_CACHE_NAMESPACE:shop:local}
+    ttl-seconds: ${SHOP_PRODUCT_CACHE_TTL_SECONDS:300}
+    jitter-seconds: ${SHOP_PRODUCT_CACHE_JITTER_SECONDS:60}
+    null-ttl-seconds: ${SHOP_PRODUCT_CACHE_NULL_TTL_SECONDS:30}
+  notification:
+    # 关闭时不追加终态事件、不连接 MQ、不装配通知发布任务，也不开放可用通知入口。
+    enabled: ${SHOP_NOTIFICATION_ENABLED:false}
+    publish-poll-millis: ${SHOP_NOTIFICATION_PUBLISH_POLL_MILLIS:1000}
+    lease-seconds: ${SHOP_NOTIFICATION_LEASE_SECONDS:30}
+    confirm-timeout-millis: ${SHOP_NOTIFICATION_CONFIRM_TIMEOUT_MILLIS:5000}
+    # 连接凭据沿用部署 Rabbit 参数，但通知开关与订单到期开关互不依赖。
+    rabbit:
+      host: ${SHOP_RABBITMQ_HOST:127.0.0.1}
+      port: ${SHOP_RABBITMQ_PORT:5672}
+      virtual-host: ${SHOP_RABBITMQ_VIRTUAL_HOST:/}
+      username: ${SHOP_RABBITMQ_USERNAME:}
+      password: ${SHOP_RABBITMQ_PASSWORD:}
+      connection-timeout-millis: ${SHOP_RABBITMQ_CONNECTION_TIMEOUT_MILLIS:5000}
+    internal:
+      # 商城只通过内部网络访问通知服务，不把通知库或凭据交给浏览器。
+      base-url: ${SHOP_NOTIFICATION_INTERNAL_BASE_URL:http://127.0.0.1:8082}
+      connect-timeout-millis: ${SHOP_NOTIFICATION_CONNECT_TIMEOUT_MILLIS:500}
+      response-timeout-millis: ${SHOP_NOTIFICATION_RESPONSE_TIMEOUT_MILLIS:2000}
+      max-response-bytes: ${SHOP_NOTIFICATION_MAX_RESPONSE_BYTES:65536}
+    token:
+      # RS256 私钥只从部署环境注入，不提交到仓库；未配置时通知 API 明确返回 503。
+      private-key: ${SHOP_NOTIFICATION_PRIVATE_KEY:}
+      kid: ${SHOP_NOTIFICATION_TOKEN_KID:}
+      issuer: ${SHOP_NOTIFICATION_ISSUER:shop}
+      audience: ${SHOP_NOTIFICATION_AUDIENCE:shop-notification}
+      ttl-seconds: ${SHOP_NOTIFICATION_TTL_SECONDS:30}
+      clock-skew-seconds: ${SHOP_NOTIFICATION_CLOCK_SKEW_SECONDS:5}
+
+mybatis-plus:
+  configuration:
+    map-underscore-to-camel-case: true

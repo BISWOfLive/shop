@@ -1,0 +1,12 @@
+# 第一名管理员命令入口：仅显式 profile + SHOP_BOOTSTRAP_ADMIN_ENABLED=true 时运行。
+# 关闭 HTTP 服务；用户名、密码和昵称只从环境读取，不写入配置、命令行或日志。
+spring:
+  main:
+    web-application-type: none
+
+shop:
+  bootstrap-admin:
+    enabled: ${SHOP_BOOTSTRAP_ADMIN_ENABLED:false}
+    username: ${SHOP_BOOTSTRAP_ADMIN_USERNAME:}
+    password: ${SHOP_BOOTSTRAP_ADMIN_PASSWORD:}
+    nickname: ${SHOP_BOOTSTRAP_ADMIN_NICKNAME:}

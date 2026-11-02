@@ -1,0 +1,285 @@
+# 唯一后端 Docker 入口：docker compose up -d --build。
+# 需要 Docker Desktop / Compose 2.17+；MySQL 使用 Windows 本机 3306。
+name: shop-backend
+
+x-java-build: &java-build
+  context: .
+  dockerfile_inline: |
+    # syntax=docker/dockerfile:1
+    FROM maven:3.9.9-eclipse-temurin-21 AS shop-build
+    WORKDIR /workspace
+    COPY pom.xml ./
+    COPY src ./src
+    # 共用下载缓存并锁定写入；失败最多尝试三次，保留实际 Maven 错误。
+    RUN --mount=type=cache,id=shop-backend-maven,target=/root/.m2,sharing=locked \
+        for attempt in 1 2 3; do \
+          if mvn -B -ntp -U -Dmaven.test.skip=true package; then exit 0; fi; \
+          if [ "$$attempt" -eq 3 ]; then exit 1; fi; \
+          echo "Maven build/download failed; retrying ($$attempt/3)..." >&2; \
+          sleep 3; \
+        done
+
+    FROM maven:3.9.9-eclipse-temurin-21 AS notification-build
+    WORKDIR /workspace
+    COPY notification-service/pom.xml ./
+    COPY notification-service/src ./src
+    RUN --mount=type=cache,id=shop-backend-maven,target=/root/.m2,sharing=locked \
+        for attempt in 1 2 3; do \
+          if mvn -B -ntp -U -Dmaven.test.skip=true package; then exit 0; fi; \
+          if [ "$$attempt" -eq 3 ]; then exit 1; fi; \
+          echo "Maven build/download failed; retrying ($$attempt/3)..." >&2; \
+          sleep 3; \
+        done
+
+    FROM maven:3.9.9-eclipse-temurin-21 AS keys-build
+    WORKDIR /workspace
+    COPY <<'JAVA' NotificationKeys.java
+    import java.nio.file.Files;
+    import java.nio.file.Path;
+    import java.nio.file.StandardOpenOption;
+    import java.nio.file.attribute.PosixFilePermissions;
+    import java.security.KeyFactory;
+    import java.security.KeyPairGenerator;
+    import java.security.interfaces.RSAPrivateCrtKey;
+    import java.security.spec.PKCS8EncodedKeySpec;
+    import java.security.spec.RSAPublicKeySpec;
+    import java.util.Base64;
+
+    public class NotificationKeys {
+        public static void main(String[] args) throws Exception {
+            Path api = Path.of("/keys/api");
+            Path notification = Path.of("/keys/notification");
+            Files.createDirectories(api);
+            Files.createDirectories(notification);
+            Path privateFile = api.resolve("shop.notification.token.private-key");
+            KeyFactory factory = KeyFactory.getInstance("RSA");
+            RSAPrivateCrtKey privateKey;
+            if (Files.exists(privateFile)) {
+                String body = Files.readString(privateFile)
+                        .replace("-----BEGIN PRIVATE KEY-----", "")
+                        .replace("-----END PRIVATE KEY-----", "")
+                        .replaceAll("\\s", "");
+                privateKey = (RSAPrivateCrtKey) factory.generatePrivate(
+                        new PKCS8EncodedKeySpec(Base64.getDecoder().decode(body)));
+            } else {
+                KeyPairGenerator generator = KeyPairGenerator.getInstance("RSA");
+                generator.initialize(2048);
+                privateKey = (RSAPrivateCrtKey) generator.generateKeyPair().getPrivate();
+                Files.writeString(privateFile, pem("PRIVATE KEY", privateKey.getEncoded()),
+                        StandardOpenOption.CREATE_NEW);
+            }
+            Files.setPosixFilePermissions(privateFile, PosixFilePermissions.fromString("rw-------"));
+            var publicKey = factory.generatePublic(new RSAPublicKeySpec(
+                    privateKey.getModulus(), privateKey.getPublicExponent()));
+            Path publicFile = notification.resolve("notification.security.keys.local");
+            Files.writeString(publicFile, pem("PUBLIC KEY", publicKey.getEncoded()));
+            Files.setPosixFilePermissions(publicFile, PosixFilePermissions.fromString("rw-r--r--"));
+            System.out.println("Notification signing keys are ready; existing private key is retained.");
+        }
+
+        private static String pem(String type, byte[] value) {
+            String body = Base64.getMimeEncoder(64, new byte[]{10}).encodeToString(value);
+            return "-----BEGIN " + type + "-----\n" + body + "\n-----END " + type + "-----\n";
+        }
+    }
+    JAVA
+    RUN javac NotificationKeys.java
+
+    FROM eclipse-temurin:21.0.10_7-jre AS runtime
+    ENV TZ=Asia/Shanghai LANG=C.UTF-8
+    ENV JAVA_TOOL_OPTIONS="-XX:MaxRAMPercentage=65.0 -XX:+ExitOnOutOfMemoryError"
+    RUN apt-get update \
+     && apt-get install -y --no-install-recommends curl \
+     && rm -rf /var/lib/apt/lists/* \
+     && groupadd --gid 10001 shop \
+     && useradd --uid 10001 --gid 10001 --home-dir /app --shell /usr/sbin/nologin shop \
+     && mkdir -p /app/logs \
+     && chown -R 10001:10001 /app
+    WORKDIR /app
+    USER 10001:10001
+
+    FROM runtime AS notification-keys
+    USER root
+    RUN mkdir -p /keys/api /keys/notification && chown -R 10001:10001 /keys
+    USER 10001:10001
+    COPY --from=keys-build --chown=10001:10001 /workspace/NotificationKeys.class /app/
+    ENTRYPOINT ["java", "-cp", "/app", "NotificationKeys"]
+
+    FROM runtime AS shop-notification
+    COPY --from=notification-build --chown=10001:10001 /workspace/target/notification-service-0.0.1-SNAPSHOT.jar /app/app.jar
+    EXPOSE 8082 8083
+    ENTRYPOINT ["java", "-jar", "/app/app.jar"]
+
+    FROM runtime AS shop-api
+    COPY --from=shop-build --chown=10001:10001 /workspace/target/shop-0.0.1-SNAPSHOT.jar /app/app.jar
+    EXPOSE 8080 8081
+    ENTRYPOINT ["java", "-jar", "/app/app.jar"]
+
+x-app-runtime: &app-runtime
+  restart: unless-stopped
+  read_only: true
+  tmpfs:
+    - /tmp
+  security_opt:
+    - no-new-privileges:true
+  stop_grace_period: 45s
+  networks:
+    - shop-net
+  logging:
+    driver: json-file
+    options:
+      max-size: "10m"
+      max-file: "3"
+
+services:
+  # 一次性任务；正常退出后才启动 Java 服务。私钥与公钥分别存卷。
+  notification-keys:
+    build:
+      <<: *java-build
+      target: notification-keys
+    restart: "no"
+    read_only: true
+    tmpfs:
+      - /tmp
+    network_mode: none
+    mem_limit: 128m
+    security_opt:
+      - no-new-privileges:true
+    volumes:
+      - notification-private-key:/keys/api
+      - notification-public-key:/keys/notification
+
+  redis:
+    image: redis:7.4.2
+    restart: unless-stopped
+    # 仅存缓存，不发布端口，不把 Redis 当持久事实来源。
+    command: ["redis-server", "--save", "", "--appendonly", "no", "--maxmemory", "128mb", "--maxmemory-policy", "allkeys-lru"]
+    mem_limit: 192m
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 3s
+      retries: 12
+    networks:
+      - shop-net
+
+  rabbitmq:
+    image: rabbitmq:4.4.0-management
+    hostname: shop-rabbitmq
+    restart: unless-stopped
+    mem_limit: 768m
+    environment:
+      RABBITMQ_DEFAULT_USER: ${RABBITMQ_USERNAME:-shop}
+      RABBITMQ_DEFAULT_PASS: ${RABBITMQ_PASSWORD:?请先在根目录 .env 填写 RABBITMQ_PASSWORD}
+      RABBITMQ_DEFAULT_VHOST: shop-local
+      TZ: Asia/Shanghai
+    ports:
+      - "127.0.0.1:${RABBITMQ_MANAGEMENT_PORT:-15672}:15672"
+    volumes:
+      - rabbitmq-data:/var/lib/rabbitmq
+    healthcheck:
+      test: ["CMD", "rabbitmq-diagnostics", "-q", "check_running"]
+      interval: 10s
+      timeout: 10s
+      retries: 12
+      start_period: 30s
+    networks:
+      - shop-net
+
+  shop-notification:
+    <<: *app-runtime
+    build:
+      <<: *java-build
+      target: shop-notification
+    mem_limit: 512m
+    depends_on:
+      notification-keys:
+        condition: service_completed_successfully
+      rabbitmq:
+        condition: service_healthy
+    environment:
+      SPRING_PROFILES_ACTIVE: prod
+      SPRING_CONFIG_IMPORT: configtree:/run/notification-keys/
+      NOTIFICATION_DB_URL: jdbc:mysql://host.docker.internal:3306/${NOTIFICATION_DB_NAME:-test_shop_notification}?useUnicode=true&characterEncoding=UTF-8&serverTimezone=Asia/Shanghai
+      NOTIFICATION_DB_USERNAME: ${NOTIFICATION_DB_USERNAME:-${MYSQL_USERNAME:-root}}
+      NOTIFICATION_DB_PASSWORD: ${NOTIFICATION_DB_PASSWORD:-${MYSQL_PASSWORD:?请先在根目录 .env 填写 MYSQL_PASSWORD}}
+      NOTIFICATION_CONSUMER_ENABLED: "true"
+      NOTIFICATION_RABBITMQ_HOST: rabbitmq
+      NOTIFICATION_RABBITMQ_PORT: "5672"
+      NOTIFICATION_RABBITMQ_VIRTUAL_HOST: shop-local
+      NOTIFICATION_RABBITMQ_USERNAME: ${RABBITMQ_USERNAME:-shop}
+      NOTIFICATION_RABBITMQ_PASSWORD: ${RABBITMQ_PASSWORD:?请先在根目录 .env 填写 RABBITMQ_PASSWORD}
+      NOTIFICATION_TOKEN_ISSUER: shop
+      NOTIFICATION_TOKEN_AUDIENCE: shop-notification
+      NOTIFICATION_LOG_FILE: /app/logs/notification.log
+    volumes:
+      - notification-public-key:/run/notification-keys:ro
+      - notification-logs:/app/logs
+    healthcheck:
+      test: ["CMD", "curl", "--fail", "--silent", "--max-time", "3", "http://127.0.0.1:8083/actuator/health/readiness"]
+      interval: 15s
+      timeout: 5s
+      retries: 12
+      start_period: 60s
+
+  shop-api:
+    <<: *app-runtime
+    build:
+      <<: *java-build
+      target: shop-api
+    mem_limit: 768m
+    depends_on:
+      notification-keys:
+        condition: service_completed_successfully
+      redis:
+        condition: service_healthy
+      rabbitmq:
+        condition: service_healthy
+      shop-notification:
+        condition: service_healthy
+    environment:
+      SPRING_PROFILES_ACTIVE: prod
+      SPRING_CONFIG_IMPORT: configtree:/run/notification-keys/
+      SHOP_DB_URL: jdbc:mysql://host.docker.internal:3306/${SHOP_DB_NAME:-test_shop}?useUnicode=true&characterEncoding=UTF-8&serverTimezone=Asia/Shanghai
+      SHOP_DB_USERNAME: ${MYSQL_USERNAME:-root}
+      SHOP_DB_PASSWORD: ${MYSQL_PASSWORD:?请先在根目录 .env 填写 MYSQL_PASSWORD}
+      # 本机 HTTP 仅发布到 127.0.0.1，明确覆盖 prod 的 Secure Cookie。
+      SERVER_SERVLET_SESSION_COOKIE_SECURE: "false"
+      SHOP_PRODUCT_CACHE_ENABLED: "true"
+      SHOP_PRODUCT_CACHE_NAMESPACE: shop:docker-local
+      SHOP_REDIS_HOST: redis
+      SHOP_REDIS_PORT: "6379"
+      SHOP_ORDER_TIMEOUT_ENABLED: "true"
+      SHOP_RABBITMQ_HOST: rabbitmq
+      SHOP_RABBITMQ_PORT: "5672"
+      SHOP_RABBITMQ_VIRTUAL_HOST: shop-local
+      SHOP_RABBITMQ_USERNAME: ${RABBITMQ_USERNAME:-shop}
+      SHOP_RABBITMQ_PASSWORD: ${RABBITMQ_PASSWORD:?请先在根目录 .env 填写 RABBITMQ_PASSWORD}
+      SHOP_NOTIFICATION_ENABLED: "true"
+      SHOP_NOTIFICATION_INTERNAL_BASE_URL: http://shop-notification:8082
+      SHOP_NOTIFICATION_TOKEN_KID: local
+      SHOP_NOTIFICATION_ISSUER: shop
+      SHOP_NOTIFICATION_AUDIENCE: shop-notification
+      SHOP_LOG_FILE: /app/logs/shop.log
+    ports:
+      - "127.0.0.1:${SHOP_HTTP_PORT:-8080}:8080"
+    volumes:
+      - notification-private-key:/run/notification-keys:ro
+      - shop-logs:/app/logs
+    healthcheck:
+      test: ["CMD", "curl", "--fail", "--silent", "--max-time", "3", "http://127.0.0.1:8081/actuator/health/readiness"]
+      interval: 15s
+      timeout: 5s
+      retries: 12
+      start_period: 60s
+
+volumes:
+  rabbitmq-data:
+  shop-logs:
+  notification-logs:
+  notification-private-key:
+  notification-public-key:
+
+networks:
+  shop-net:
+    driver: bridge

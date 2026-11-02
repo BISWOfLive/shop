@@ -1,0 +1,78 @@
+# 生产单实例基线。凭据、地址、证书与发布镜像均从运行环境注入，不写入本文件或镜像。
+# 必填项缺失、互斥 profile 同开或启用功能配置不完整时由 ProductionConfigurationGuard 拒绝启动。
+server:
+  port: 8080
+  # 只接受入口写入的转发头，并仅信任已限定的代理网段；公网客户端伪造的 X-Forwarded-* 不生效。
+  forward-headers-strategy: native
+  tomcat:
+    threads:
+      max: 100
+    remoteip:
+      internal-proxies: "10\\.\\d{1,3}\\.\\d{1,3}\\.\\d{1,3}|192\\.168\\.\\d{1,3}\\.\\d{1,3}|172\\.(?:1[6-9]|2\\d|3[01])\\.\\d{1,3}\\.\\d{1,3}"
+  # 入口停止接入新请求后，等待在途请求与后台任务完成；Compose stop_grace_period 应大于该预算。
+  shutdown: graceful
+  servlet:
+    session:
+      cookie:
+        secure: true
+
+spring:
+  lifecycle:
+    timeout-per-shutdown-phase: 30s
+  sql:
+    init:
+      mode: never
+  datasource:
+    hikari:
+      maximum-pool-size: 10
+      minimum-idle: 2
+      connection-timeout: 3000
+
+shop:
+  logging:
+    # 滚动日志文件由 logback-spring.xml 使用；容器内默认写入挂载的 /app/logs。
+    file: ${SHOP_LOG_FILE:/app/logs/shop.log}
+  observability:
+    # 业务指标使用独立单线程每 60 秒采样，失败保留上次成功时间并置 stale。
+    business-sample-millis: 60000
+    business-sample-initial-delay-millis: 30000
+  # 生产默认关闭；启用顺序见 deploy/operations.md：先建通知库与拓扑，再启用记录/发布。
+  notification:
+    enabled: ${SHOP_NOTIFICATION_ENABLED:false}
+    internal:
+      base-url: ${SHOP_NOTIFICATION_INTERNAL_BASE_URL:}
+    token:
+      private-key: ${SHOP_NOTIFICATION_PRIVATE_KEY:}
+      kid: ${SHOP_NOTIFICATION_TOKEN_KID:}
+
+management:
+  server:
+    # 管理端口只在容器内部网络暴露，不映射到宿主机公网地址。
+    port: 8081
+  endpoints:
+    web:
+      exposure:
+        include: health,info,prometheus
+  endpoint:
+    health:
+      # 健康详情不公开；只报告总体或分组的 status。
+      show-details: never
+      probes:
+        enabled: true
+      group:
+        liveness:
+          include: livenessState
+        readiness:
+          include: readinessState,db,shopDatabase
+  health:
+    redis:
+      # Redis 只在商品缓存显式启用时才参与健康检查，关闭时不主动访问网络。
+      enabled: ${SHOP_PRODUCT_CACHE_ENABLED:false}
+  metrics:
+    tags:
+      application: shop
+
+info:
+  app:
+    name: shop
+    version: ${SHOP_APP_VERSION:unknown}

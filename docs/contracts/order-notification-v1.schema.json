@@ -1,0 +1,76 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://test-shop.invalid/contracts/order-notification-v1.schema.json",
+  "title": "订单终态通知事件 v1",
+  "description": "ORDER_PAID / ORDER_CANCELLED 事件快照。商城写入 outbox_event.payload，RabbitMQ 使用同一 JSON 正文，通知服务按本协议校验后消费。本文件用于服务间协议说明，不是运行时依赖。",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "eventId",
+    "eventType",
+    "payloadVersion",
+    "orderId",
+    "orderNo",
+    "recipientUserId",
+    "totalAmount",
+    "occurredAt",
+    "cancelReason"
+  ],
+  "properties": {
+    "eventId": {
+      "type": "string",
+      "description": "UUID；与 outbox_event.event_id、AMQP messageId 相同，重投不变",
+      "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$"
+    },
+    "eventType": {
+      "type": "string",
+      "enum": ["ORDER_PAID", "ORDER_CANCELLED"]
+    },
+    "payloadVersion": {
+      "type": "integer",
+      "const": 1
+    },
+    "orderId": {
+      "type": "string",
+      "description": "正十进制字符串，在 Java Long 正数范围内",
+      "pattern": "^[1-9][0-9]{0,18}$"
+    },
+    "orderNo": {
+      "type": "string",
+      "description": "沿用现有 32 位小写十六进制订单号",
+      "pattern": "^[0-9a-f]{32}$"
+    },
+    "recipientUserId": {
+      "type": "string",
+      "description": "接收人来自 order.buyer_id，正十进制字符串",
+      "pattern": "^[1-9][0-9]{0,18}$"
+    },
+    "totalAmount": {
+      "type": "string",
+      "description": "两位十进制金额，正数且符合原 DECIMAL(18,2)，例如 199.00",
+      "pattern": "^[1-9][0-9]{0,15}\\.[0-9]{2}$"
+    },
+    "occurredAt": {
+      "type": "string",
+      "description": "取已写入订单的 paid_at/cancelled_at，固定 +08:00 毫秒时间",
+      "pattern": "^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}\\.[0-9]{3}\\+08:00$"
+    },
+    "cancelReason": {
+      "description": "ORDER_PAID 为 null；ORDER_CANCELLED 仅 USER 或 TIMEOUT",
+      "oneOf": [
+        { "type": "null" },
+        { "type": "string", "enum": ["USER", "TIMEOUT"] }
+      ]
+    }
+  },
+  "allOf": [
+    {
+      "if": { "properties": { "eventType": { "const": "ORDER_PAID" } } },
+      "then": { "properties": { "cancelReason": { "type": "null" } } }
+    },
+    {
+      "if": { "properties": { "eventType": { "const": "ORDER_CANCELLED" } } },
+      "then": { "properties": { "cancelReason": { "enum": ["USER", "TIMEOUT"] } } }
+    }
+  ]
+}

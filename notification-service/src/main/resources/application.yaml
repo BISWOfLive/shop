@@ -1,0 +1,58 @@
+server:
+  port: 8082
+
+spring:
+  application:
+    name: shop-notification
+
+  # Rabbit 连接、声明与监听只在 notification.consumer.enabled=true 时由专用配置装配。
+  autoconfigure:
+    exclude:
+      - org.springframework.boot.amqp.autoconfigure.RabbitAutoConfiguration
+
+  sql:
+    init:
+      mode: never
+
+  datasource:
+    hikari:
+      connection-init-sql: "SET time_zone = '+08:00'"
+    driver-class-name: com.mysql.cj.jdbc.Driver
+    # 通知服务只连自己的库；仓库不保存数据库口令，运行环境必须显式注入。
+    url: ${NOTIFICATION_DB_URL}
+    username: ${NOTIFICATION_DB_USERNAME}
+    password: ${NOTIFICATION_DB_PASSWORD}
+
+management:
+  server:
+    port: 8083
+  endpoints:
+    web:
+      exposure:
+        include: health,info,prometheus
+
+mybatis-plus:
+  configuration:
+    map-underscore-to-camel-case: true
+
+notification:
+  consumer:
+    # 由操作者显式启用消费；关闭时不连接 MQ、不声明拓扑，也不删除已保存通知。
+    enabled: ${NOTIFICATION_CONSUMER_ENABLED:false}
+    concurrency: ${NOTIFICATION_CONSUMER_CONCURRENCY:2}
+    prefetch: ${NOTIFICATION_CONSUMER_PREFETCH:10}
+    max-body-bytes: ${NOTIFICATION_CONSUMER_MAX_BODY_BYTES:16384}
+    retry-attempts: ${NOTIFICATION_CONSUMER_RETRY_ATTEMPTS:3}
+    rabbit:
+      host: ${NOTIFICATION_RABBITMQ_HOST:127.0.0.1}
+      port: ${NOTIFICATION_RABBITMQ_PORT:5672}
+      virtual-host: ${NOTIFICATION_RABBITMQ_VIRTUAL_HOST:/}
+      username: ${NOTIFICATION_RABBITMQ_USERNAME:}
+      password: ${NOTIFICATION_RABBITMQ_PASSWORD:}
+      connection-timeout-millis: ${NOTIFICATION_RABBITMQ_CONNECTION_TIMEOUT_MILLIS:5000}
+  security:
+    issuer: ${NOTIFICATION_TOKEN_ISSUER:shop}
+    audience: ${NOTIFICATION_TOKEN_AUDIENCE:shop-notification}
+    clock-skew-seconds: ${NOTIFICATION_TOKEN_CLOCK_SKEW_SECONDS:5}
+    # kid -> X.509 公钥 PEM。生产用 NOTIFICATION_SECURITY_KEYS_<KID> 注入（kid 用小写）。
+    keys: {}
